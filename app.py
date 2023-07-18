@@ -1,6 +1,5 @@
 import cssutils
 from bs4 import BeautifulSoup
-import re
 html_path = './index.html'
 css_path = './style.css'
 
