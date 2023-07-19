@@ -1,4 +1,4 @@
-import cssutils
+import cssutils 
 from bs4 import BeautifulSoup
 html_path = './index.html'
 css_path = './style.css'
@@ -29,6 +29,7 @@ def html_parser(path):
 
 
 
+
 def css_parser(path):
 
     with open(path, 'r') as css_file:
@@ -37,10 +38,11 @@ def css_parser(path):
 
     css_soup = cssutils.parseString(css)
     for rule in css_soup:
-        class_and_id.append(rule.selectorText)
+        if rule.type == cssutils.css.CSSRule.STYLE_RULE:
+
+            class_and_id.append(rule.selectorText)
 
     return class_and_id
-
 
 
 
@@ -51,19 +53,15 @@ def compare_between_html_css():
     shall_delete = [i for i in css if i not in html]
     return shall_delete
     
-    
 
 
-def delete_classes_and_ids(css_file_path, css_new_path , classes_and_id=None):
+def delete_classes_and_ids(css_file_path, css_new_path, classes_and_id=None):
     classes_to_delete, ids_to_delete = [], []
     for i in classes_and_id:
         if i.startswith('.'):
-            value = i[1 :]
-            classes_to_delete.append(value)
-        if i.startswith('#'):
-            value = i[1:]
-            ids_to_delete.append(value)
-
+            classes_to_delete.append(i)
+        elif i.startswith('#'):
+            ids_to_delete.append(i)
 
     # Read the CSS file
     with open(css_file_path, 'rb') as css_file:
@@ -73,26 +71,30 @@ def delete_classes_and_ids(css_file_path, css_new_path , classes_and_id=None):
     css_content = css_content_byte.decode('utf-8')
     css_rules = cssutils.parseString(css_content)
 
-    # Delete classes and IDs from the CSS content using cssutils
-    for rule in css_rules:
-        if rule.type == cssutils.css.CSSRule.STYLE_RULE:
-            if classes_to_delete and any(cls in rule.selectorText for cls in classes_to_delete):
-                rule.deleted = True
-            elif ids_to_delete and any(id_ in rule.selectorText for id_ in ids_to_delete):
-                rule.deleted = True
-
-
+    # Filter out unwanted rules from the CSS content using cssutils
+    new_css_rules = [rule for rule in css_rules if not _should_delete_rule(rule, classes_to_delete, ids_to_delete)]
 
     # Serialize the modified CSS content
-    new_css_content = css_rules.cssText
+    new_css_content = cssutils.css.CSSStyleSheet()
+    for rule in new_css_rules:
+        new_css_content.add(rule)
 
     # Write the modified CSS content back to the file
     with open(css_new_path, 'wb') as css_file:
-        css_file.write(new_css_content)
-        print('works')
-    
+        css_file.write(new_css_content.cssText)
+
+# this fucntion deletes the ids and classes from css file 
+def _should_delete_rule(rule, classes_to_delete, ids_to_delete):
+    if rule.type == cssutils.css.CSSRule.STYLE_RULE:
+        for selector in rule.selectorList:
+            selector_text = selector.selectorText.strip()
+            print(selector.selectorText.strip())
+            if selector_text in classes_to_delete or any(id_ in selector_text for id_ in ids_to_delete):
+                return True
+    return False
 
 # Example usage
 compare = compare_between_html_css()
 css_new_path = './new_style.css'
 delete_classes_and_ids(css_path,css_new_path , compare)
+
